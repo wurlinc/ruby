@@ -26,6 +26,7 @@ RUN set -ex \
 		ruby \
 	' \
 	&& apt-get update \
+	&& apt-get install -y --no-install-recommends libjemalloc1 libjemalloc-dev \
 	&& apt-get install -y --no-install-recommends $buildDeps \
 	&& rm -rf /var/lib/apt/lists/* \
 	\
@@ -52,6 +53,7 @@ RUN set -ex \
 	&& ./configure \
 		--build="$gnuArch" \
 		--disable-install-doc \
+		--with-jemalloc \
 		--enable-shared \
 	&& make -j "$(nproc)" \
 	&& make install \
