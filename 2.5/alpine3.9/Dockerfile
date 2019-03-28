@@ -1,4 +1,7 @@
-FROM alpine:3.7
+FROM alpine:3.9
+
+RUN apk add --no-cache \
+		gmp-dev
 
 # skip installing gem documentation
 RUN mkdir -p /usr/local/etc \
@@ -8,10 +11,9 @@ RUN mkdir -p /usr/local/etc \
 	} >> /usr/local/etc/gemrc
 
 ENV RUBY_MAJOR 2.5
-ENV RUBY_VERSION 2.5.3
-ENV RUBY_DOWNLOAD_SHA256 1cc9d0359a8ea35fc6111ec830d12e60168f3b9b305a3c2578357d360fcf306f
-ENV RUBYGEMS_VERSION 2.7.8
-ENV BUNDLER_VERSION 1.17.1
+ENV RUBY_VERSION 2.5.5
+ENV RUBY_DOWNLOAD_SHA256 9bf6370aaa82c284f193264cc7ca56f202171c32367deceb3599a4f354175d7d
+ENV RUBYGEMS_VERSION 3.0.3
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -31,13 +33,13 @@ RUN set -ex \
 		glib-dev \
 		libc-dev \
 		libffi-dev \
-		libressl \
-		libressl-dev \
 		libxml2-dev \
 		libxslt-dev \
 		linux-headers \
 		make \
 		ncurses-dev \
+		openssl \
+		openssl-dev \
 		procps \
 		readline-dev \
 		ruby \
@@ -99,10 +101,11 @@ RUN set -ex \
 	&& apk del --no-network .ruby-builddeps \
 	&& cd / \
 	&& rm -r /usr/src/ruby \
-	\
-	&& gem update --system "$RUBYGEMS_VERSION" \
-	&& gem install bundler --version "$BUNDLER_VERSION" --force \
-	&& rm -r /root/.gem/
+# make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)
+	&& ruby -e 'exit(Gem::Version.create(ENV["RUBYGEMS_VERSION"]) > Gem::Version.create(Gem::VERSION))' \
+	&& gem update --system "$RUBYGEMS_VERSION" && rm -r /root/.gem/ \
+# rough smoke test
+	&& ruby --version && gem --version && bundle --version
 
 # install things globally, for great justice
 # and don't create ".bundle" in all our apps

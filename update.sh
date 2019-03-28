@@ -17,8 +17,12 @@ latest_gem_version() {
 	curl -fsSL "https://rubygems.org/api/v1/gems/$1.json" | sed -r 's/^.*"version":"([^"]+)".*$/\1/'
 }
 
-rubygems="$(latest_gem_version rubygems-update)"
-bundler="$(latest_gem_version bundler)"
+# https://github.com/docker-library/ruby/issues/246
+rubygems='3.0.3'
+declare -A newEnoughRubygems=(
+	[2.6]=1 # 2.6.2 => gems 3.0.3
+)
+# TODO once all versions are in this family of "new enough", remove RUBYGEMS_VERSION code entirely
 
 travisEnv=
 for version in "${versions[@]}"; do
@@ -63,10 +67,10 @@ for version in "${versions[@]}"; do
 		continue
 	fi
 
-	echo "$version: $fullVersion; rubygems $rubygems, bundler $bundler; $shaVal"
+	echo "$version: $fullVersion; $shaVal"
 
 	for v in \
-		alpine{3.6,3.7,3.8} \
+		alpine{3.7,3.8,3.9} \
 		{jessie,stretch}{/slim,} \
 	; do
 		dir="$version/$v"
@@ -81,12 +85,15 @@ for version in "${versions[@]}"; do
 		esac
 		template="Dockerfile-${template}.template"
 
+		if [ "$variant" = 'slim' ]; then
+			tag+='-slim'
+		fi
+
 		sed -r \
 			-e 's!%%VERSION%%!'"$version"'!g' \
 			-e 's!%%FULL_VERSION%%!'"$fullVersion"'!g' \
 			-e 's!%%SHA256%%!'"$shaVal"'!g' \
 			-e 's!%%RUBYGEMS%%!'"$rubygems"'!g' \
-			-e 's!%%BUNDLER%%!'"$bundler"'!g' \
 			-e "$(
 				if [ "$version" = 2.3 ] && [[ "$v" = stretch* ]]; then
 					echo 's/libssl-dev/libssl1.0-dev/g'
@@ -96,6 +103,17 @@ for version in "${versions[@]}"; do
 			)" \
 			-e 's/^(FROM (debian|buildpack-deps|alpine)):.*/\1:'"$tag"'/' \
 			"$template" > "$dir/Dockerfile"
+
+		case "$variant" in
+			alpine3.8 | alpine3.7)
+				# Alpine 3.9+ uses OpenSSL, but 3.8/3.7 still uses LibreSSL
+				sed -ri -e 's/openssl/libressl/g' "$dir/Dockerfile"
+				;;
+		esac
+
+		if [ -n "${newEnoughRubygems[$version]:-}" ]; then
+			sed -ri -e '/RUBYGEMS_VERSION/d' "$dir/Dockerfile"
+		fi
 
 		travisEnv='\n  - VERSION='"$version VARIANT=$v$travisEnv"
 	done
