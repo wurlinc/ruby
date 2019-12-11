@@ -30,6 +30,8 @@ RUN set -ex \
 		dpkg-dev dpkg \
 		gcc \
 		gdbm-dev \
+		jemalloc1 \
+		jemalloc-dev \
 		glib-dev \
 		libc-dev \
 		libffi-dev \
@@ -81,6 +83,7 @@ RUN set -ex \
 	&& ./configure \
 		--build="$gnuArch" \
 		--disable-install-doc \
+		--with-jemalloc \
 		--enable-shared \
 	&& make -j "$(nproc)" \
 	&& make install \

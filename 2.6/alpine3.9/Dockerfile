@@ -35,6 +35,8 @@ RUN set -ex \
 		libxml2-dev \
 		libxslt-dev \
 		linux-headers \
+		jemalloc1 \
+		jemalloc-dev \
 		make \
 		ncurses-dev \
 		openssl \
@@ -80,6 +82,7 @@ RUN set -ex \
 	&& ./configure \
 		--build="$gnuArch" \
 		--disable-install-doc \
+		--with-jemalloc \
 		--enable-shared \
 	&& make -j "$(nproc)" \
 	&& make install \
