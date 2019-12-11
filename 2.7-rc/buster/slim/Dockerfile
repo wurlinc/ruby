@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 RUN set -eux; \
 	apt-get update; \
@@ -6,9 +6,6 @@ RUN set -eux; \
 		bzip2 \
 		ca-certificates \
 		libffi-dev \
-		libgdbm3 \
-		libjemalloc1 \
-		libjemalloc-dev \
 		libgmp-dev \
 		libssl-dev \
 		libyaml-dev \
@@ -25,10 +22,9 @@ RUN set -eux; \
 		echo 'update: --no-document'; \
 	} >> /usr/local/etc/gemrc
 
-ENV RUBY_MAJOR 2.4
-ENV RUBY_VERSION 2.4.9
-ENV RUBY_DOWNLOAD_SHA256 0c4e000253ef7187feeb940a01a1c7594f28d63aa16f978e892a0e2864f58614
-ENV RUBYGEMS_VERSION 3.0.3
+ENV RUBY_MAJOR 2.7-rc
+ENV RUBY_VERSION 2.7.0-preview3
+ENV RUBY_DOWNLOAD_SHA256 ad9d61e55ac224e3447a762e001965839846f9658f87a0e792840887cfe61b8c
 
 # some of ruby's build scripts are written in ruby
 #   we purge system ruby later to make sure our final image uses what we just built
@@ -42,6 +38,7 @@ RUN set -eux; \
 		dpkg-dev \
 		gcc \
 		libbz2-dev \
+		libgdbm-compat-dev \
 		libgdbm-dev \
 		libglib2.0-dev \
 		libncurses-dev \
@@ -77,7 +74,6 @@ RUN set -eux; \
 	gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"; \
 	./configure \
 		--build="$gnuArch" \
-		--with-jemalloc \
 		--disable-install-doc \
 		--enable-shared \
 	; \
@@ -98,9 +94,6 @@ RUN set -eux; \
 	\
 	cd /; \
 	rm -r /usr/src/ruby; \
-# make sure bundled "rubygems" is older than RUBYGEMS_VERSION (https://github.com/docker-library/ruby/issues/246)
-	ruby -e 'exit(Gem::Version.create(ENV["RUBYGEMS_VERSION"]) > Gem::Version.create(Gem::VERSION))'; \
-	gem update --system "$RUBYGEMS_VERSION" && rm -r /root/.gem/; \
 # verify we have no "ruby" packages installed
 	! dpkg -l | grep -i ruby; \
 	[ "$(command -v ruby)" = '/usr/local/bin/ruby' ]; \
